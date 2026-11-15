@@ -29,7 +29,9 @@
 | 路径 | 用途与当前状态 |
 | --- | --- |
 | `docs/` | 当前文档；已有上游图片和 mockup，保留 |
-| `src/` | 当前：Vue 页面、组件、API 封装和类型 |
+| `src/App.vue` | 仅设置窗口布局、导航和全局提示；不堆页面表单或原生命令 |
+| `src/views/`、`src/components/` | 通用设置、收藏、关于页面与共享开关、侧栏；编辑草稿归所属页面 |
+| `src/composables/`、`src/services/` | 窗口级状态/事件生命周期与类型化 Tauri 接口；每个窗口只订阅一次 |
 | `src-tauri/src/commands/` | 当前：薄 Tauri 命令入口 |
 | `src-tauri/src/domain/` | 当前：上下文、文件、收藏、设置服务 |
 | `src-tauri/src/storage/`、`migrations/` | 当前：SQLite 与版本化迁移 |
@@ -58,6 +60,7 @@
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Rust 核心与临时 SQLite 测试 |
 | `bash scripts/build-finder-extension.sh` | 仅编译扩展到构建目录，不安装 |
 | `bash scripts/test-native.sh` | 原生菜单与命名对话框测试，会短暂显示自动关闭的自有测试窗口 |
+| `QYJ_TEST_FINDER_HIDDEN=1 bash scripts/test-native.sh` | 额外实测 Finder 隐藏文件可见性往返并恢复，需已有辅助功能权限；须先说明影响 |
 | `npm run build` | 当前：类型检查后构建生产前端 |
 | `npm run build:macos` | 当前：扩展构建、Tauri 打包、嵌入及完整签名校验，不自动安装 |
 
@@ -67,6 +70,7 @@
 
 - 用中文直接报告结论、证据、验证边界和未完成项，不把静态阅读或编译通过说成实机验证。
 - 先追踪入口到最终效果，按模块职责修改；不把 SQL、系统命令或核心规则塞进 Vue 组件。
+- Vue 页面共用 useAppState 的窗口级快照、动作锁和错误提示；Tauri 命令名与参数映射集中在 services/desktop.ts。共享控件只接收 props 并发出交互事件，不自行持久化。
 - TypeScript 开启严格类型，避免无依据的 any；Rust 错误用 Result 传播，业务路径不用 unwrap/expect 代替错误处理。
 - 新增或修改的 if、else、for（含增强 for）、while、do/while 语句体，即使只有一条语句，也必须使用 `{}`；按语言实际支持执行。
 - 新增或修改的方法写有用的职责、约束或副作用注释；复杂逻辑补必要行注释，不逐行复述代码。

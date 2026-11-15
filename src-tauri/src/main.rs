@@ -209,11 +209,7 @@ fn dispatch(app: &tauri::AppHandle, action: Action) -> Result<()> {
             });
         }
         "open_terminal" => platform::terminal(&resolve_folder(&action.context)?)?,
-        "set_hidden_visible" => platform::set_hidden(
-            action
-                .visible
-                .ok_or_else(|| AppError::new("INVALID_ARGUMENT", "缺少显示状态。"))?,
-        )?,
+        "toggle_hidden" => platform::toggle_hidden()?,
         "add_favorite" => {
             let directory = resolve_folder(&action.context)?;
             let created = {

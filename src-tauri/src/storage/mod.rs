@@ -24,7 +24,7 @@ impl Store {
         }
         let mut db = Connection::open(path)?;
         let version: i64 = db.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        if version > 4 {
+        if version > 5 {
             return Err(AppError::new(
                 "STORAGE_ERROR",
                 "配置来自较新版本，请使用更新的轻右键。",
@@ -95,6 +95,11 @@ impl Store {
         if version < 4 {
             let tx = db.transaction()?;
             tx.execute_batch(include_str!("../../migrations/004_launch_preferences.sql"))?;
+            tx.commit()?;
+        }
+        if version < 5 {
+            let tx = db.transaction()?;
+            tx.execute_batch(include_str!("../../migrations/005_hidden_toggle.sql"))?;
             tx.commit()?;
         }
         Ok(Self { db })
@@ -369,7 +374,58 @@ mod tests {
         let store = Store::open(&path).unwrap();
         let saved = store.settings().unwrap();
         assert!(saved.show_menu_bar_icon && saved.start_at_login && !saved.run_in_background);
-        assert_eq!(saved.menu_items.len(), 11);
+        assert_eq!(saved.menu_items.len(), 10);
+    }
+
+    /// Upgrade real v4 menu settings without changing favorites, disabled choices or order.
+    #[test]
+    fn hidden_toggle_migrates_legacy_menu() {
+        for (show, hide, expected) in [(0, 0, false), (1, 0, true), (0, 1, true)] {
+            let temp = tempfile::tempdir().unwrap();
+            let path = temp.path().join("legacy.sqlite3");
+            let mut store = Store::open(&path).unwrap();
+            let favorite = store
+                .add(temp.path().to_str().unwrap(), Some("保留收藏"))
+                .unwrap()
+                .0;
+            store
+                .db
+                .execute_batch(
+                    "DELETE FROM menu_item WHERE id='toggle-hidden'; PRAGMA user_version=4;",
+                )
+                .unwrap();
+            store
+                .db
+                .execute(
+                    "INSERT INTO menu_item VALUES ('show-hidden',?1,20,0)",
+                    [show],
+                )
+                .unwrap();
+            store
+                .db
+                .execute(
+                    "INSERT INTO menu_item VALUES ('hide-hidden',?1,18,0)",
+                    [hide],
+                )
+                .unwrap();
+            drop(store);
+            let store = Store::open(&path).unwrap();
+            let items = store.settings().unwrap().menu_items;
+            let toggle = items
+                .iter()
+                .find(|item| item.id == "toggle-hidden")
+                .unwrap();
+            assert_eq!(toggle.enabled, expected);
+            assert_eq!(toggle.sort_order, 18);
+            assert_eq!(items.len(), 10);
+            assert!(!items
+                .iter()
+                .any(|item| item.id == "show-hidden" || item.id == "hide-hidden"));
+            assert_eq!(
+                store.favorite(&favorite.id).unwrap().display_name,
+                "保留收藏"
+            );
+        }
     }
 
     /// Verify persisted edits and deduplication without touching the user's actual database.

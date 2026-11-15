@@ -84,7 +84,6 @@ pub struct Action {
     #[serde(default)]
     pub context: Context,
     pub resource_id: Option<String>,
-    pub visible: Option<bool>,
 }
 
 /// Normalize syntactic paths without resolving symlinks or changing filename case.

@@ -90,8 +90,8 @@ NSDictionary *QYJReadSnapshot(void) {
     self.requests = [NSMutableDictionary new]; self.symbolCache = [NSMutableDictionary new]; self.nextTag = 0;
     NSDictionary *snapshot = [self snapshot];
     NSMenu *menu = [NSMenu new]; menu.autoenablesItems = NO;
-    NSDictionary *titles = @{@"new-folder":@"新建文件夹",@"copy-to":@"复制到",@"move-to":@"剪切到",@"trash":@"移到废纸篓",@"new-file":@"新建文件",@"copy-path":@"拷贝路径",@"terminal":@"在此打开终端",@"show-hidden":@"显示所有隐藏文件",@"hide-hidden":@"隐藏所有隐藏文件",@"favorites":@"常用目录",@"add-favorite":@"添加到常用目录"};
-    NSDictionary *symbols = @{@"new-folder":@"folder.badge.plus",@"new-file":@"doc.badge.plus",@"copy-path":@"link",@"copy-to":@"doc.on.doc",@"move-to":@"scissors",@"trash":@"trash",@"terminal":@"terminal",@"show-hidden":@"eye",@"hide-hidden":@"eye.slash",@"favorites":@"star",@"add-favorite":@"star.circle"};
+    NSDictionary *titles = @{@"new-folder":@"新建文件夹",@"copy-to":@"复制到",@"move-to":@"剪切到",@"trash":@"移到废纸篓",@"new-file":@"新建文件",@"copy-path":@"拷贝路径",@"terminal":@"在此打开终端",@"toggle-hidden":@"显示／隐藏隐藏文件",@"favorites":@"常用目录",@"add-favorite":@"添加到常用目录"};
+    NSDictionary *symbols = @{@"new-folder":@"folder.badge.plus",@"new-file":@"doc.badge.plus",@"copy-path":@"link",@"copy-to":@"doc.on.doc",@"move-to":@"scissors",@"trash":@"trash",@"terminal":@"terminal",@"toggle-hidden":@"eye",@"favorites":@"star",@"add-favorite":@"star.circle"};
     NSDictionary *context = @{ @"menuKind":kind == FIMenuKindContextualMenuForContainer ? @"container":@"items", @"targetedPath": FIFinderSyncController.defaultController.targetedURL.path ?: NSNull.null, @"selectedPaths":[FIFinderSyncController.defaultController.selectedItemURLs valueForKey:@"path"] ?: @[] };
     if (kind == FIMenuKindContextualMenuForContainer) { NSMutableDictionary *clean = context.mutableCopy; clean[@"selectedPaths"] = @[]; context = clean; }
     for (NSDictionary *config in snapshot[@"menuItems"]) {
@@ -130,7 +130,7 @@ NSDictionary *QYJReadSnapshot(void) {
         else if ([key isEqual:@"add-favorite"]) {
             payload[@"action"] = @"add_favorite";
             if (kind == FIMenuKindContextualMenuForContainer) { entry.title = @"添加当前目录到常用目录"; }
-        } else { payload[@"action"] = @"set_hidden_visible"; payload[@"visible"] = @([key isEqual:@"show-hidden"]); }
+        } else if ([key isEqual:@"toggle-hidden"]) { payload[@"action"] = @"toggle_hidden"; }
         BOOL hasContext = [context[@"targetedPath"] isKindOfClass:NSString.class] || [context[@"selectedPaths"] count] == 1;
         BOOL selectionAction = [@[@"copy-path",@"copy-to",@"move-to",@"trash"] containsObject:key];
         if (!hasContext && !(selectionAction && [context[@"selectedPaths"] count] > 0) && ![key isEqual:@"favorites"] && ![key hasSuffix:@"hidden"]) { entry.enabled = NO; }

@@ -1,3 +1,7 @@
+export type SettingsTab = "general" | "favorites" | "about";
+export type LaunchPreference =
+  "showMenuBarIcon" | "startAtLogin" | "runInBackground";
+
 export interface Favorite {
   id: string;
   displayName: string;
@@ -37,8 +41,7 @@ export const menuLabels: Record<string, string> = {
   "new-file": "新建文件",
   "copy-path": "拷贝路径",
   terminal: "在此打开终端",
-  "show-hidden": "显示所有隐藏文件",
-  "hide-hidden": "隐藏所有隐藏文件",
+  "toggle-hidden": "显示／隐藏隐藏文件",
   favorites: "常用目录",
   "add-favorite": "添加到常用目录",
 };
@@ -78,8 +81,7 @@ export const menuGlyphs: Record<string, string> = {
   "move-to": "✂",
   trash: "⌫",
   terminal: "›_",
-  "show-hidden": "◉",
-  "hide-hidden": "◌",
+  "toggle-hidden": "◉",
   favorites: "☆",
   "add-favorite": "✩",
 };

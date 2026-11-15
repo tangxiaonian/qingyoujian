@@ -50,7 +50,12 @@ flowchart LR
 finder-tools/
 ├── AGENTS.md
 ├── docs/                       # PRD、架构、存储、计划（当前已建立）
-├── src/                        # 目标：Vue 页面、组件、类型、Tauri API 封装
+├── src/                        # 当前 Vue 设置窗口
+│   ├── App.vue                 # 布局、导航和全局提示
+│   ├── views/                  # 通用设置、常用目录、关于
+│   ├── components/             # 侧栏、启动/菜单偏好、共享开关
+│   ├── composables/            # 窗口级状态、动作锁和事件清理
+│   └── services/desktop.ts     # 类型化 Tauri 命令和订阅入口
 ├── src-tauri/                  # 目标：Tauri + Rust
 │   ├── src/commands/           # Vue 命令入口
 │   ├── src/domain/             # 上下文、文件、收藏、设置服务
@@ -67,6 +72,12 @@ finder-tools/
 ```
 
 Vue、Rust、native 与迁移目录已建立。不得将旧 `scripts/build.sh` 的成功视作 Tauri 构建成功。现有 Swift 草稿不进入新发布产物，也不在本次文档工作中删除。
+
+### 2.3 设置窗口内部职责
+
+App.vue 创建一次 useAppState 并通过 Vue provide/inject 交给页面，共用后端快照、动作锁与提示；挂载时读取配置并监听 settings_changed，卸载时释放监听。页面导航不会重复订阅，不引入全局状态库或后台轮询。
+
+GeneralView 负责克隆设置并提交，启动与菜单偏好交给独立展示组件；SettingSwitch 使用已保存值控制选中状态，保存失败不会假装已生效。FavoritesView 负责收藏草稿和操作编排，改名失败保留草稿，后端仍负责目录校验和持久化。AboutView 负责产品信息和退出入口。所有原生命令名、参数和返回值集中在 services/desktop.ts，页面不直接调用 invoke。
 
 ## 3. 模块划分
 
@@ -99,7 +110,7 @@ Finder 菜单选择类型 → 扩展发送类型 ID 与 Finder 上下文 → 宿
 
 ### 4.3 隐藏文件与终端
 
-隐藏显示读取和写入 Finder 的真实系统偏好，不存成应用自有布尔值。M0 验证刷新方式；如需重启 Finder，先显示确认，取消不修改偏好。启动和安装不执行该操作。
+隐藏显示使用 Finder 原生 ⌘⇧. 快捷键，通过 CGEventPostToPid 定向发送给 Finder，先激活 Finder，立即刷新且不重启进程。Finder 快捷键改变的实时显示状态与磁盘 AppleShowAllFiles 值可能不一致，因此只提供一个切换菜单，不读写该偏好或缓存显示布尔值。缺少辅助功能权限时仅展示用途及系统授权入口，取消不发送事件；授权后可直接使用。启动和安装不执行切换。
 
 Terminal 通过平台 API 或固定可执行程序的独立参数启动。目录不拼接成 Shell 命令；路径含空格、引号或中文应保持原值。验证 `pwd` 后才算完成。
 
@@ -155,7 +166,7 @@ Terminal 通过平台 API 或固定可执行程序的独立参数启动。目录
 | `new_folder` | null | 必需 |
 | `new_file` | 文件类型 ID；自定义项为 null | 必需 |
 | `open_terminal` | null | 必需 |
-| `set_hidden_visible` | null，另带布尔 `visible` | 不需要 |
+| `toggle_hidden` | null | 不需要 |
 | `add_favorite` | null | 必需 |
 | `open_favorite` | 收藏 ID | 不需要 |
 | `show_settings` | null | 不需要 |

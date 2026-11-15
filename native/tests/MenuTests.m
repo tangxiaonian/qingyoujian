@@ -52,6 +52,15 @@ int main(void) {
         NSCAssert([menu itemAtIndex:6].image != nil,@"new folder icon missing");
         [sync runAction:[[menu itemAtIndex:6] copy]];
         NSCAssert([sync.captured[@"action"] isEqual:@"new_folder"],@"new folder action lost");
+        NSDictionary *originalFixture = sync.fixture;
+        NSMutableDictionary *hiddenFixture = sync.fixture.mutableCopy;
+        hiddenFixture[@"menuItems"] = @[@{@"id":@"toggle-hidden",@"enabled":@YES}];
+        sync.fixture = hiddenFixture;
+        NSMenu *hiddenMenu = [sync menuForMenuKind:FIMenuKindContextualMenuForContainer];
+        NSCAssert(hiddenMenu.numberOfItems == 3 && [hiddenMenu itemAtIndex:0].image, @"hidden toggle must have exactly one icon-bearing action");
+        [sync runAction:[[hiddenMenu itemAtIndex:0] copy]];
+        NSCAssert([sync.captured[@"action"] isEqual:@"toggle_hidden"] && !sync.captured[@"visible"], @"hidden toggle must not infer state from persisted preferences");
+        sync.fixture = originalFixture;
         NSMutableArray *many = [NSMutableArray new];
         for (int index=0; index<100; index++) { [many addObject:@{@"id":[NSString stringWithFormat:@"fav-%d",index],@"displayName":[NSString stringWithFormat:@"目录 %d",index]}]; }
         NSMutableDictionary *benchmark = sync.fixture.mutableCopy;benchmark[@"favorites"] = many;sync.fixture = benchmark;

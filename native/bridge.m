@@ -1,4 +1,5 @@
 #import <AppKit/AppKit.h>
+#import <ApplicationServices/ApplicationServices.h>
 #import <Security/Security.h>
 #import <Carbon/Carbon.h>
 #import <ServiceManagement/ServiceManagement.h>
@@ -147,12 +148,42 @@ int qyj_missing_folder(void) {
     [NSApp activateIgnoringOtherApps:YES]; return (int)[alert runModal] - (int)NSAlertFirstButtonReturn;
 }
 
-/// Finder may need relaunching for this preference; ask before making either change.
-bool qyj_confirm_hidden(void) {
-    NSAlert *alert = [NSAlert new]; alert.messageText = @"切换隐藏文件显示";
-    alert.informativeText = @"此操作会改变所有 Finder 窗口的隐藏文件显示状态，并重新启动 Finder 使其生效。不会修改文件的隐藏属性。";
-    [alert addButtonWithTitle:@"继续"]; [alert addButtonWithTitle:@"取消"];
-    [NSApp activateIgnoringOtherApps:YES]; return [alert runModal] == NSAlertFirstButtonReturn;
+/// Use Finder's live shortcut; its persisted preference can lag behind the visible state.
+char *qyj_toggle_hidden(void) {
+    if (!AXIsProcessTrusted()) {
+        NSAlert *alert = [NSAlert new];
+        alert.messageText = @"允许轻右键切换隐藏文件";
+        alert.informativeText = @"此功能通过 Finder 自带的 ⌘⇧. 快捷键立即刷新，无需重启 Finder。请在系统设置 → 隐私与安全性 → 辅助功能中允许轻右键，然后重新点击菜单。其他功能无需此授权。";
+        [alert addButtonWithTitle:@"前往授权"]; [alert addButtonWithTitle:@"取消"];
+        [NSApp activateIgnoringOtherApps:YES];
+        if ([alert runModal] == NSAlertFirstButtonReturn) {
+            AXIsProcessTrustedWithOptions((__bridge CFDictionaryRef)@{(__bridge id)kAXTrustedCheckOptionPrompt: @YES});
+            [NSWorkspace.sharedWorkspace openURL:[NSURL URLWithString:@"x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"]];
+        }
+        return NULL;
+    }
+    NSRunningApplication *finder = [NSRunningApplication runningApplicationsWithBundleIdentifier:@"com.apple.finder"].firstObject;
+    if (!finder) { return strdup("Finder 当前没有运行，请打开一个 Finder 窗口后重试。"); }
+    [finder activateWithOptions:0];
+    NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:0.8];
+    while (!finder.active && deadline.timeIntervalSinceNow > 0) {
+        [NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
+    }
+    if (!finder.active) { return strdup("无法激活 Finder，请关闭 Finder 中的对话框后重试。"); }
+    CGEventRef down = CGEventCreateKeyboardEvent(NULL, kVK_ANSI_Period, true);
+    CGEventRef up = CGEventCreateKeyboardEvent(NULL, kVK_ANSI_Period, false);
+    if (!down || !up) {
+        if (down) { CFRelease(down); }
+        if (up) { CFRelease(up); }
+        return strdup("无法创建 Finder 快捷键事件，请重试。");
+    }
+    CGEventSetFlags(down, kCGEventFlagMaskCommand | kCGEventFlagMaskShift);
+    CGEventSetFlags(up, kCGEventFlagMaskCommand | kCGEventFlagMaskShift);
+    // Target Finder explicitly so the shortcut cannot be delivered to an unrelated app.
+    CGEventPostToPid(finder.processIdentifier, down);
+    CGEventPostToPid(finder.processIdentifier, up);
+    CFRelease(down); CFRelease(up);
+    return NULL;
 }
 
 /// Reuse system launch APIs rather than executing paths as shell code.

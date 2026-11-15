@@ -1,6 +1,6 @@
 # 轻右键本地数据设计
 
-版本：1.0；日期：2026-11-14。实现基线：四表已成为迁移 001，新增文件操作菜单为迁移 002；当前 schema version 为 4。正式运行数据库仅存在本机，不上传仓库。
+版本：1.0；日期：2026-11-14。实现基线：四表已成为迁移 001，新增文件操作菜单为迁移 002；当前 schema version 为 5。正式运行数据库仅存在本机，不上传仓库。
 
 ## 1. 存储原则
 
@@ -70,7 +70,7 @@
 | `sort_order` | INTEGER，非空 | 顶层菜单顺序 |
 | `updated_at` | INTEGER，非空 | 最近设置时间 |
 
-固定 ID：`new-folder`、`new-file`、`copy-path`、`copy-to`、`move-to`、`trash`、`terminal`、`show-hidden`、`hide-hidden`、`favorites`、`add-favorite`。不在表中存本地化文案、选择器或可执行命令；应用内映射文案和实现。
+固定 ID：`new-folder`、`new-file`、`copy-path`、`copy-to`、`move-to`、`trash`、`terminal`、`toggle-hidden`、`favorites`、`add-favorite`。不在表中存本地化文案、选择器或可执行命令；应用内映射文案和实现。
 
 ### 3.4 app_setting
 
@@ -168,8 +168,12 @@ SQLite 提交 → 读取已提交的配置与 revision → 构建完整快照 �
 
 ## 8. 迁移 003：新建文件夹
 
-将原有菜单整体顺序后移一位，插入 new-folder，更新快照 revision 和 user_version=3；不改动收藏、文件类型或已有菜单开关。当前共十一个顶层菜单项。
+将原有菜单整体顺序后移一位，插入 new-folder，更新快照 revision 和 user_version=3；不改动收藏、文件类型或已有菜单开关。迁移 003 后共十一个顶层菜单项；迁移 005 后合并为十项。
 
 ## 9. 迁移 004：启动与后台偏好
 
 插入三个独立布尔设置，初始值为 false / false / true；不在迁移或启动时自动注册登录项。实际登录项状态来自 SMAppService。该迁移只增加键、更新 revision 并设置 user_version=4，不改用户收藏和菜单开关。
+
+### 迁移 005：即时隐藏文件切换
+
+将 show-hidden / hide-hidden 合并为 toggle-hidden，enabled 取原两项最大值（两项都关闭则保持关闭），sort_order 取原两项最小值，更新 revision 并设置 user_version=5。收藏、文件类型与其他菜单设置不变。隐藏文件的系统实时显示状态不落库。

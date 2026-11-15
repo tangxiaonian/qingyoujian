@@ -14,7 +14,7 @@ unsafe extern "C" {
     fn qyj_alert(message: *const c_char);
     fn qyj_choose_folder() -> *mut c_char;
     fn qyj_missing_folder() -> i32;
-    fn qyj_confirm_hidden() -> bool;
+    fn qyj_toggle_hidden() -> *mut c_char;
     fn qyj_open_folder(path: *const c_char) -> bool;
     fn qyj_reveal(path: *const c_char);
     fn qyj_is_package(path: *const c_char) -> bool;
@@ -118,34 +118,12 @@ pub fn terminal(path: &Path) -> Result<()> {
         ))
     }
 }
-/// A visible confirmation precedes changing Finder's preference and relaunching it.
-pub fn set_hidden(visible: bool) -> Result<()> {
-    if !unsafe { qyj_confirm_hidden() } {
-        return Ok(());
+/// Toggle Finder's live display without writing stale preferences or restarting its process.
+pub fn toggle_hidden() -> Result<()> {
+    match unsafe { take(qyj_toggle_hidden()) } {
+        Some(message) => Err(AppError::new("OS_OPERATION_FAILED", &message)),
+        None => Ok(()),
     }
-    let status = Command::new("/usr/bin/defaults")
-        .args([
-            "write",
-            "com.apple.finder",
-            "AppleShowAllFiles",
-            "-bool",
-            if visible { "true" } else { "false" },
-        ])
-        .status()?;
-    if !status.success() {
-        return Err(AppError::new(
-            "OS_OPERATION_FAILED",
-            "无法修改 Finder 显示设置。",
-        ));
-    }
-    let status = Command::new("/usr/bin/killall").arg("Finder").status()?;
-    if !status.success() {
-        return Err(AppError::new(
-            "OS_OPERATION_FAILED",
-            "设置已保存，请手动重新启动 Finder。",
-        ));
-    }
-    Ok(())
 }
 /// Query pluginkit rather than assuming installation means activation.
 pub fn extension_status() -> String {
