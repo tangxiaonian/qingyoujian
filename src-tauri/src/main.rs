@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod archive_actions;
 mod domain;
 mod platform;
 mod storage;
@@ -167,6 +168,9 @@ fn dispatch(app: &tauri::AppHandle, action: Action) -> Result<()> {
                 let file = create_file(&directory, &name, &content)?;
                 platform::reveal(&file)?;
             }
+        }
+        "compress_zip" | "extract_zip_here" | "extract_zip_folder" => {
+            archive_actions::start(app, &action)?;
         }
         "copy_items" | "move_items" | "trash_items" => {
             use domain::file_actions::{perform, selection, Operation};

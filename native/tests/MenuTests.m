@@ -60,6 +60,28 @@ int main(void) {
         NSCAssert(hiddenMenu.numberOfItems == 3 && [hiddenMenu itemAtIndex:0].image, @"hidden toggle must have exactly one icon-bearing action");
         [sync runAction:[[hiddenMenu itemAtIndex:0] copy]];
         NSCAssert([sync.captured[@"action"] isEqual:@"toggle_hidden"] && !sync.captured[@"visible"], @"hidden toggle must not infer state from persisted preferences");
+        NSMutableDictionary *zipFixture = originalFixture.mutableCopy;
+        zipFixture[@"menuItems"] = @[@{@"id":@"compress-zip",@"enabled":@YES}, @{@"id":@"extract-zip-here",@"enabled":@YES}, @{@"id":@"extract-zip-folder",@"enabled":@YES}];
+        sync.fixture = zipFixture;
+        NSMenu *zipMenu = [sync menuForMenuKind:FIMenuKindContextualMenuForContainer];
+        for (int index=0; index<3; index++) {
+            NSCAssert(![zipMenu itemAtIndex:index].enabled && [zipMenu itemAtIndex:index].image.size.width == 16, @"background ZIP actions must be disabled and retain small icons");
+        }
+        controller.selectedItemURLs = @[[NSURL fileURLWithPath:@"/tmp/中文 archive.ZIP"], [NSURL fileURLWithPath:@"/tmp/second.zip"]];
+        zipMenu = [sync menuForMenuKind:FIMenuKindContextualMenuForItems];
+        NSArray *archiveActions = @[@"compress_zip", @"extract_zip_here", @"extract_zip_folder"];
+        for (int index=0; index<3; index++) {
+            NSCAssert([zipMenu itemAtIndex:index].enabled, @"ZIP multi-selection should enable archive actions");
+            [sync runAction:[[zipMenu itemAtIndex:index] copy]];
+            NSCAssert([sync.captured[@"action"] isEqual:archiveActions[index]] && [sync.captured[@"context"][@"selectedPaths"] count] == 2, @"copied ZIP menu lost its action or selection");
+        }
+        controller.selectedItemURLs = @[[NSURL fileURLWithPath:@"/tmp/archive.zip"], [NSURL fileURLWithPath:@"/tmp/other.txt"]];
+        zipMenu = [sync menuForMenuKind:FIMenuKindContextualMenuForItems];
+        NSCAssert([zipMenu itemAtIndex:0].enabled && ![zipMenu itemAtIndex:1].enabled && ![zipMenu itemAtIndex:2].enabled, @"mixed selection may compress but must not offer extraction");
+        controller.selectedItemURLs = @[];
+        zipMenu = [sync menuForMenuKind:FIMenuKindContextualMenuForItems];
+        NSCAssert(![zipMenu itemAtIndex:0].enabled && ![zipMenu itemAtIndex:1].enabled, @"empty selection cannot start ZIP work");
+        controller.selectedItemURLs = @[[NSURL fileURLWithPath:@"/tmp/old.txt"]];
         sync.fixture = originalFixture;
         NSMutableArray *many = [NSMutableArray new];
         for (int index=0; index<100; index++) { [many addObject:@{@"id":[NSString stringWithFormat:@"fav-%d",index],@"displayName":[NSString stringWithFormat:@"目录 %d",index]}]; }

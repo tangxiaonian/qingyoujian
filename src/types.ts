@@ -34,6 +34,9 @@ export interface AppState {
   favorites: Favorite[];
 }
 export const menuLabels: Record<string, string> = {
+  "compress-zip": "压缩为 ZIP",
+  "extract-zip-here": "解压 ZIP 到当前文件夹",
+  "extract-zip-folder": "解压 ZIP 到独立文件夹",
   "new-folder": "新建文件夹",
   "copy-to": "复制到",
   "move-to": "剪切到",
@@ -74,6 +77,9 @@ export function errorText(error: unknown): string {
 }
 
 export const menuGlyphs: Record<string, string> = {
+  "compress-zip": "▤",
+  "extract-zip-here": "⇣",
+  "extract-zip-folder": "▰",
   "new-folder": "▰",
   "new-file": "＋",
   "copy-path": "⧉",

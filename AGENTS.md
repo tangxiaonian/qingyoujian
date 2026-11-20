@@ -33,7 +33,8 @@
 | `src/views/`、`src/components/` | 通用设置、收藏、关于页面与共享开关、侧栏；编辑草稿归所属页面 |
 | `src/composables/`、`src/services/` | 窗口级状态/事件生命周期与类型化 Tauri 接口；每个窗口只订阅一次 |
 | `src-tauri/src/commands/` | 当前：薄 Tauri 命令入口 |
-| `src-tauri/src/domain/` | 当前：上下文、文件、收藏、设置服务 |
+| `src-tauri/src/domain/` | 当前：上下文、文件、收藏、设置服务；archive/ 独立处理 ZIP |
+| `src-tauri/src/archive_actions.rs` | ZIP 后台任务和生命周期/主线程反馈，不在 main.rs 堆解压逻辑 |
 | `src-tauri/src/storage/`、`migrations/` | 当前：SQLite 与版本化迁移 |
 | `src-tauri/src/platform/macos/` | 当前：系统动作和事件桥 |
 | `native/finder-extension/` | 当前：Objective-C 扩展及权限声明 |

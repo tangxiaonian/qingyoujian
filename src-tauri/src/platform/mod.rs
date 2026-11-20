@@ -17,6 +17,7 @@ unsafe extern "C" {
     fn qyj_toggle_hidden() -> *mut c_char;
     fn qyj_open_folder(path: *const c_char) -> bool;
     fn qyj_reveal(path: *const c_char);
+    fn qyj_reveal_many(json: *const c_char);
     fn qyj_is_package(path: *const c_char) -> bool;
     fn qyj_accessory(accessory: bool);
     fn free(pointer: *mut std::ffi::c_void);
@@ -102,6 +103,12 @@ pub fn reveal(path: &Path) -> Result<()> {
     let path = cstring(&path.to_string_lossy())?;
     unsafe { qyj_reveal(path.as_ptr()) };
     Ok(())
+}
+/// Reveal successful archive outputs in one Finder request after background work completes.
+pub fn reveal_many(paths: &[std::path::PathBuf]) {
+    if let Ok(json) = cstring(&serde_json::json!(paths).to_string()) {
+        unsafe { qyj_reveal_many(json.as_ptr()) };
+    }
 }
 /// Terminal handles a directory argument; no cd command or user-controlled script is generated.
 pub fn terminal(path: &Path) -> Result<()> {

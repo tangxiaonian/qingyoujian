@@ -90,8 +90,8 @@ NSDictionary *QYJReadSnapshot(void) {
     self.requests = [NSMutableDictionary new]; self.symbolCache = [NSMutableDictionary new]; self.nextTag = 0;
     NSDictionary *snapshot = [self snapshot];
     NSMenu *menu = [NSMenu new]; menu.autoenablesItems = NO;
-    NSDictionary *titles = @{@"new-folder":@"新建文件夹",@"copy-to":@"复制到",@"move-to":@"剪切到",@"trash":@"移到废纸篓",@"new-file":@"新建文件",@"copy-path":@"拷贝路径",@"terminal":@"在此打开终端",@"toggle-hidden":@"显示／隐藏隐藏文件",@"favorites":@"常用目录",@"add-favorite":@"添加到常用目录"};
-    NSDictionary *symbols = @{@"new-folder":@"folder.badge.plus",@"new-file":@"doc.badge.plus",@"copy-path":@"link",@"copy-to":@"doc.on.doc",@"move-to":@"scissors",@"trash":@"trash",@"terminal":@"terminal",@"toggle-hidden":@"eye",@"favorites":@"star",@"add-favorite":@"star.circle"};
+    NSDictionary *titles = @{@"compress-zip":@"压缩为 ZIP",@"extract-zip-here":@"解压 ZIP 到当前文件夹",@"extract-zip-folder":@"解压 ZIP 到独立文件夹",@"new-folder":@"新建文件夹",@"copy-to":@"复制到",@"move-to":@"剪切到",@"trash":@"移到废纸篓",@"new-file":@"新建文件",@"copy-path":@"拷贝路径",@"terminal":@"在此打开终端",@"toggle-hidden":@"显示／隐藏隐藏文件",@"favorites":@"常用目录",@"add-favorite":@"添加到常用目录"};
+    NSDictionary *symbols = @{@"compress-zip":@"doc.zipper",@"extract-zip-here":@"arrow.down.doc",@"extract-zip-folder":@"folder.badge.plus",@"new-folder":@"folder.badge.plus",@"new-file":@"doc.badge.plus",@"copy-path":@"link",@"copy-to":@"doc.on.doc",@"move-to":@"scissors",@"trash":@"trash",@"terminal":@"terminal",@"toggle-hidden":@"eye",@"favorites":@"star",@"add-favorite":@"star.circle"};
     NSDictionary *context = @{ @"menuKind":kind == FIMenuKindContextualMenuForContainer ? @"container":@"items", @"targetedPath": FIFinderSyncController.defaultController.targetedURL.path ?: NSNull.null, @"selectedPaths":[FIFinderSyncController.defaultController.selectedItemURLs valueForKey:@"path"] ?: @[] };
     if (kind == FIMenuKindContextualMenuForContainer) { NSMutableDictionary *clean = context.mutableCopy; clean[@"selectedPaths"] = @[]; context = clean; }
     for (NSDictionary *config in snapshot[@"menuItems"]) {
@@ -131,8 +131,18 @@ NSDictionary *QYJReadSnapshot(void) {
             payload[@"action"] = @"add_favorite";
             if (kind == FIMenuKindContextualMenuForContainer) { entry.title = @"添加当前目录到常用目录"; }
         } else if ([key isEqual:@"toggle-hidden"]) { payload[@"action"] = @"toggle_hidden"; }
+        if ([key isEqual:@"compress-zip"]) {
+            payload[@"action"] = @"compress_zip";
+            entry.enabled = kind == FIMenuKindContextualMenuForItems && [context[@"selectedPaths"] count] > 0;
+        } else if ([key isEqual:@"extract-zip-here"] || [key isEqual:@"extract-zip-folder"]) {
+            payload[@"action"] = [key isEqual:@"extract-zip-here"] ? @"extract_zip_here" : @"extract_zip_folder";
+            entry.enabled = kind == FIMenuKindContextualMenuForItems && [context[@"selectedPaths"] count] > 0;
+            for (NSString *path in context[@"selectedPaths"]) {
+                if (![path.pathExtension.lowercaseString isEqual:@"zip"]) { entry.enabled = NO; break; }
+            }
+        }
         BOOL hasContext = [context[@"targetedPath"] isKindOfClass:NSString.class] || [context[@"selectedPaths"] count] == 1;
-        BOOL selectionAction = [@[@"copy-path",@"copy-to",@"move-to",@"trash"] containsObject:key];
+        BOOL selectionAction = [@[@"copy-path",@"copy-to",@"move-to",@"trash",@"compress-zip",@"extract-zip-here",@"extract-zip-folder"] containsObject:key];
         if (!hasContext && !(selectionAction && [context[@"selectedPaths"] count] > 0) && ![key isEqual:@"favorites"] && ![key hasSuffix:@"hidden"]) { entry.enabled = NO; }
         [menu addItem:entry];
     }

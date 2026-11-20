@@ -1,6 +1,6 @@
 # 轻右键本地数据设计
 
-版本：1.0；日期：2026-11-14。实现基线：四表已成为迁移 001，新增文件操作菜单为迁移 002；当前 schema version 为 5。正式运行数据库仅存在本机，不上传仓库。
+版本：1.0；日期：2026-11-14。实现基线：四表已成为迁移 001，新增文件操作菜单为迁移 002；当前 schema version 为 6。正式运行数据库仅存在本机，不上传仓库。
 
 ## 1. 存储原则
 
@@ -70,7 +70,7 @@
 | `sort_order` | INTEGER，非空 | 顶层菜单顺序 |
 | `updated_at` | INTEGER，非空 | 最近设置时间 |
 
-固定 ID：`new-folder`、`new-file`、`copy-path`、`copy-to`、`move-to`、`trash`、`terminal`、`toggle-hidden`、`favorites`、`add-favorite`。不在表中存本地化文案、选择器或可执行命令；应用内映射文案和实现。
+固定 ID：`new-folder`、`new-file`、`copy-path`、`copy-to`、`move-to`、`trash`、`terminal`、`toggle-hidden`、`favorites`、`add-favorite`、`compress-zip`、`extract-zip-here`、`extract-zip-folder`。不在表中存本地化文案、选择器或可执行命令；应用内映射文案和实现。
 
 ### 3.4 app_setting
 
@@ -177,3 +177,7 @@ SQLite 提交 → 读取已提交的配置与 revision → 构建完整快照 �
 ### 迁移 005：即时隐藏文件切换
 
 将 show-hidden / hide-hidden 合并为 toggle-hidden，enabled 取原两项最大值（两项都关闭则保持关闭），sort_order 取原两项最小值，更新 revision 并设置 user_version=5。收藏、文件类型与其他菜单设置不变。隐藏文件的系统实时显示状态不落库。
+
+### 迁移 006：ZIP 菜单（2026-11-20）
+
+在已有菜单最大 sort_order 后依次追加 compress-zip、extract-zip-here、extract-zip-folder，默认 enabled=1，更新 revision 并设置 user_version=6。目前共十三个顶层菜单配置。只添加菜单行，不重写已有菜单顺序或开关，也不修改收藏、模板或启动偏好。ZIP 文件内容、操作历史及密码均不入库；不新增数据表。

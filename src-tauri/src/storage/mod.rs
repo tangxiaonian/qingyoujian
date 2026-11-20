@@ -24,7 +24,7 @@ impl Store {
         }
         let mut db = Connection::open(path)?;
         let version: i64 = db.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        if version > 5 {
+        if version > 6 {
             return Err(AppError::new(
                 "STORAGE_ERROR",
                 "配置来自较新版本，请使用更新的轻右键。",
@@ -100,6 +100,11 @@ impl Store {
         if version < 5 {
             let tx = db.transaction()?;
             tx.execute_batch(include_str!("../../migrations/005_hidden_toggle.sql"))?;
+            tx.commit()?;
+        }
+        if version < 6 {
+            let tx = db.transaction()?;
+            tx.execute_batch(include_str!("../../migrations/006_zip_actions.sql"))?;
             tx.commit()?;
         }
         Ok(Self { db })
@@ -374,7 +379,7 @@ mod tests {
         let store = Store::open(&path).unwrap();
         let saved = store.settings().unwrap();
         assert!(saved.show_menu_bar_icon && saved.start_at_login && !saved.run_in_background);
-        assert_eq!(saved.menu_items.len(), 10);
+        assert_eq!(saved.menu_items.len(), 13);
     }
 
     /// Upgrade real v4 menu settings without changing favorites, disabled choices or order.
@@ -391,7 +396,7 @@ mod tests {
             store
                 .db
                 .execute_batch(
-                    "DELETE FROM menu_item WHERE id='toggle-hidden'; PRAGMA user_version=4;",
+                    "DELETE FROM menu_item WHERE id IN ('toggle-hidden','compress-zip','extract-zip-here','extract-zip-folder'); PRAGMA user_version=4;",
                 )
                 .unwrap();
             store
@@ -417,7 +422,7 @@ mod tests {
                 .unwrap();
             assert_eq!(toggle.enabled, expected);
             assert_eq!(toggle.sort_order, 18);
-            assert_eq!(items.len(), 10);
+            assert_eq!(items.len(), 13);
             assert!(!items
                 .iter()
                 .any(|item| item.id == "show-hidden" || item.id == "hide-hidden"));
@@ -426,6 +431,67 @@ mod tests {
                 "保留收藏"
             );
         }
+    }
+
+    /// Append ZIP choices once while preserving an existing user's favorites, order and disabled menus.
+    #[test]
+    fn zip_menu_migration_preserves_existing_preferences() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("upgrade.sqlite3");
+        let mut store = Store::open(&path).unwrap();
+        let favorite = store
+            .add(temp.path().to_str().unwrap(), Some("保留目录"))
+            .unwrap()
+            .0;
+        store.db.execute_batch("DELETE FROM menu_item WHERE id IN ('compress-zip','extract-zip-here','extract-zip-folder'); UPDATE menu_item SET enabled=0,sort_order=40 WHERE id='new-file'; PRAGMA user_version=5;").unwrap();
+        let previous = store.settings().unwrap();
+        drop(store);
+        let store = Store::open(&path).unwrap();
+        let current = store.settings().unwrap();
+        assert_eq!(
+            store
+                .db
+                .query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            6
+        );
+        for before in previous.menu_items {
+            let after = current
+                .menu_items
+                .iter()
+                .find(|item| item.id == before.id)
+                .unwrap();
+            assert_eq!(
+                (after.enabled, after.sort_order),
+                (before.enabled, before.sort_order)
+            );
+        }
+        for (offset, id) in ["compress-zip", "extract-zip-here", "extract-zip-folder"]
+            .iter()
+            .enumerate()
+        {
+            let item = current
+                .menu_items
+                .iter()
+                .find(|item| item.id == *id)
+                .unwrap();
+            assert!(item.enabled);
+            assert_eq!(item.sort_order, 41 + offset as i64);
+        }
+        assert_eq!(
+            store.favorite(&favorite.id).unwrap().display_name,
+            "保留目录"
+        );
+        drop(store);
+        assert_eq!(
+            Store::open(&path)
+                .unwrap()
+                .settings()
+                .unwrap()
+                .menu_items
+                .len(),
+            13
+        );
     }
 
     /// Verify persisted edits and deduplication without touching the user's actual database.

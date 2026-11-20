@@ -17,8 +17,8 @@ rusqlite = { version = "0.37", features = ["bundled"] }
 uuid = { version = "1", features = ["v4"] }
 base64 = "0.22"
 url = "2"
-
-[dev-dependencies]
+zip = { version = "=9.8.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+walkdir = "2"
 tempfile = "3"
 
 [profile.release]

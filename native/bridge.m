@@ -193,6 +193,14 @@ bool qyj_open_folder(const char *path) {
 void qyj_reveal(const char *path) {
     [NSWorkspace.sharedWorkspace activateFileViewerSelectingURLs:@[[NSURL fileURLWithPath:[NSString stringWithUTF8String:path]]]];
 }
+/// Select completed ZIP outputs together without opening a new application or editor.
+void qyj_reveal_many(const char *json) {
+    NSData *data = [[NSString stringWithUTF8String:json] dataUsingEncoding:NSUTF8StringEncoding];
+    NSArray *paths = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    NSMutableArray<NSURL *> *urls = [NSMutableArray new];
+    for (NSString *path in paths) { [urls addObject:[NSURL fileURLWithPath:path]]; }
+    if (urls.count) { [NSWorkspace.sharedWorkspace activateFileViewerSelectingURLs:urls]; }
+}
 bool qyj_is_package(const char *path) { return [NSWorkspace.sharedWorkspace isFilePackageAtPath:[NSString stringWithUTF8String:path]]; }
 void qyj_accessory(bool accessory) { [NSApp setActivationPolicy:accessory ? NSApplicationActivationPolicyAccessory : NSApplicationActivationPolicyRegular]; }
 

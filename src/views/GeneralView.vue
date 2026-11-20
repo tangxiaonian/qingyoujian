@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import ArchiveHelp from "../components/ArchiveHelp.vue";
 import LaunchPreferences from "../components/LaunchPreferences.vue";
 import MenuPreferences from "../components/MenuPreferences.vue";
 import { useAppState } from "../composables/useAppState";
@@ -74,6 +75,7 @@ async function toggleLaunch(
     :is-desktop="isDesktop"
     @change="toggleMenu"
   />
+  <ArchiveHelp />
   <div class="two-col">
     <section class="card compact">
       <h2>新建文件</h2>

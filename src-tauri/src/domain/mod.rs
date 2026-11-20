@@ -1,3 +1,4 @@
+pub mod archive;
 pub mod file_actions;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};

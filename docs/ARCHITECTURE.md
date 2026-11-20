@@ -59,6 +59,8 @@ finder-tools/
 ├── src-tauri/                  # 目标：Tauri + Rust
 │   ├── src/commands/           # Vue 命令入口
 │   ├── src/domain/             # 上下文、文件、收藏、设置服务
+│   │   └── archive/            # ZIP 打包、临时解压、批次反馈和测试
+│   ├── src/archive_actions.rs  # ZIP 后台任务与主线程反馈
 │   ├── src/storage/            # SQLite、迁移和快照发布
 │   ├── src/platform/macos/     # Finder、终端、原生事件与对话框桥接
 │   ├── migrations/            # 版本化 DDL
@@ -172,6 +174,8 @@ Terminal 通过平台 API 或固定可执行程序的独立参数启动。目录
 | `show_settings` | null | 不需要 |
 | `copy_items` / `move_items` | 目标收藏 ID；null 表示用户选其他目录 | 必须有 selectedPaths |
 | `trash_items` | null | 必须有 selectedPaths |
+| `compress_zip` | null | items + 非空 selectedPaths，合并所选项 |
+| `extract_zip_here` / `extract_zip_folder` | null | items + 非空 selectedPaths，逐包解压 |
 
 复制/移动/废纸篓由 Rust 后台工作线程调用 Foundation 文件 API；完成回到主线程反馈，数据库锁不跨越系统对话框或文件复制过程。菜单图标由扩展转换为固定 16pt 位图，不能把多尺寸原始图标直接交给 Finder。
 
@@ -180,6 +184,14 @@ Terminal 通过平台 API 或固定可执行程序的独立参数启动。目录
 拟采用 `qingyoujian://action?payload=<base64url(JSON)>`，由系统启动宿主，不启动本地 HTTP 服务。编码只用于传输，不代表认证。原生桥必须在收到 Apple Event 时校验发送者为本应用内已签名扩展，再传给 Rust；普通网页/外部应用不能通过 URL 执行文件写入或启动终端。菜单 ID 在宿主重新查表，不信任请求中的任意模板内容或可执行程序。
 
 **M0 门槛：**验证事件发送者审计信息能否穿过 Tauri 启动与重开流程、可否校验嵌入扩展签名、冷启动是否无 WebView、LaunchServices 是否向同一宿主转交请求。未通过则记录原因，另行评估 XPC 等本机通信；不能退化为不校验来源的公开动作 URL。此处不是已具备的 Tauri 插件能力。
+
+### 5.2.1 ZIP 模块（2026-11-20）
+
+`archive_actions::start` 只负责校验选择、增加活动任务计数、启动工作线程与回到 AppKit 主线程反馈/选中结果。`domain/archive` 负责批次结果；`pack.rs` 使用 zip 9.8.0 的 ZipWriter + walkdir 流式读取普通文件和目录，`extract.rs` 使用同一库的 ZipArchive 流式解压。启用 Deflate 的 Rust 后端，关闭无关压缩和加密默认特性；不依赖外部 zip/unzip 命令、不拼接 shell。依赖接口按 Context7 和已锁定版本源码核对。
+
+压缩写入同一父目录下的 NamedTempFile，finish 成功后 persist_noclobber 按名称编号发布。解压使用同一卷上的自有临时目录，校验每项 enclosed_name、普通文件类型和 CRC，文件用 create_new 写入；拒绝越界、链接和重复目标。权限仅恢复 0777 范围，不恢复 setuid/setgid 等位。全部内容读取成功后，通过 Foundation 移动 API 将根项目放到目标位置；复用文件操作的同名编号规则，目录不合并；独立目录整体移动。失败自动清理未发布暂存内容，批量不同包继续处理。
+
+无数据库锁跨越 ZIP I/O，活动任务计数沿用宿主生命周期，非驻留模式等待任务结束才退出；不新增 WebView、轮询服务或通用脚本执行能力。
 
 ### 5.3 快照与事件
 

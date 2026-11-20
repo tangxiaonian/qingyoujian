@@ -52,7 +52,7 @@ pub fn selection(context: &Context) -> Result<Vec<PathBuf>> {
 }
 
 /// A collision creates a sibling name; folders retain dots as part of the folder name.
-fn available_target(source: &Path, destination: &Path) -> Result<PathBuf> {
+pub(super) fn available_target(source: &Path, destination: &Path) -> Result<PathBuf> {
     let name = source
         .file_name()
         .ok_or_else(|| AppError::new("INVALID_ARGUMENT", "不能对磁盘根目录执行此操作。"))?
